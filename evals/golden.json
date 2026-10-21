@@ -1,0 +1,136 @@
+{
+  "status": "DRAFT 2026-10-15, awaiting user review; see specs/imac-qa/eval-review.md",
+  "notes": "expectedPages are PDF page indices (1-12). expectedAnswerContains strings are matched against the answer after normalizing case, whitespace and thousands separators. valueStrings (optional, default = expectedAnswerContains) are the strings that must ALL appear in ONE retrieved chunk for a 'value hit'. kind is the element the answer lives in (chart/table/callout/footnote/paragraph). out-of-scope items expect exactly the refusal string.",
+  "items": [
+    {
+      "id": "g01-energy-star",
+      "type": "acceptance",
+      "kind": "paragraph",
+      "question": "How much less energy does iMac use compared to the ENERGY STAR requirement?",
+      "expectedAnswerContains": ["58"],
+      "valueStrings": ["58 percent less energy"],
+      "expectedPages": [7],
+      "verified": true,
+      "note": "p7 lead line and the ENERGY STAR paragraph both say 'iMac uses/consumes 58 percent less energy than the requirement for ENERGY STAR' (marker 18). Plain prose, not a chart."
+    },
+    {
+      "id": "g02-footprint-split",
+      "type": "acceptance",
+      "kind": "table",
+      "question": "What is the total carbon footprint of the iMac, and how much comes from product use versus manufacturing?",
+      "expectedAnswerContains": ["346", "50", "45"],
+      "valueStrings": ["346 kg", "Production 50%", "Product use 45%"],
+      "expectedPages": [10],
+      "verified": true,
+      "note": "p10 table 1 (iMac two ports 256GB): total 346 kg CO2e; Production 50%, Transportation 5%, Product use 45%, End-of-life <1%. 'Manufacturing' = the table's 'Production' row. Four-port 512GB (391 kg) is a different column; the chunk must keep the two-port header with the rows. The bare strings '50'/'45' in the correctness check are weak (any 50 or 45 passes); judge by hand if in doubt."
+    },
+    {
+      "id": "g03-stand-material",
+      "type": "acceptance",
+      "kind": "callout",
+      "question": "What material is the iMac stand made from, and what percentage of it is recycled?",
+      "expectedAnswerContains": ["aluminum", "100"],
+      "valueStrings": ["100 percent recycled aluminum in the stand"],
+      "expectedPages": [1, 2, 4],
+      "verified": true,
+      "note": "p1 banner 'iMac uses 100% recycled aluminum in the stand' (written with a % sign, so the p1 chunk will not match the 'percent' valueString; p4 callout and p2 paragraph use 'percent'). Overall device recycled content (more than 15 percent) is a different number and a possible distractor."
+    },
+    {
+      "id": "g04-chart-baseline",
+      "type": "trap",
+      "kind": "chart",
+      "question": "In the progress toward carbon neutral chart, what are the baseline emissions, the emissions reductions, and the resulting iMac emissions?",
+      "expectedAnswerContains": ["445", "99", "346"],
+      "valueStrings": ["445 kg", "99 kg", "346 kg"],
+      "expectedPages": [2],
+      "verified": true,
+      "note": "p2 stacked-bar chart (vector, no raster): 445 kg baseline, -99 kg reductions (written with an en dash), 346 kg iMac emissions; 445 - 99 = 346. The answer lives only in the chart labels; the chart has no per-segment numbers. Value hit needs all three labels in one chunk (plain text puts '445 kg' ~30 lines away from '346 kg')."
+    },
+    {
+      "id": "g05-four-ports",
+      "type": "trap",
+      "kind": "table",
+      "question": "What is the carbon footprint of the four-port, 512GB iMac?",
+      "expectedAnswerContains": ["391"],
+      "valueStrings": ["391 kg", "four ports"],
+      "expectedPages": [10],
+      "verified": true,
+      "note": "p10 table 2: 'iMac (four ports) 512GB 391 kg CO2e'. Trap: the 346 kg figure is the two-port 256GB. Only in the table."
+    },
+    {
+      "id": "g06-idle-115v",
+      "type": "trap",
+      "kind": "table",
+      "question": "How much power does the iMac draw in Idle (display on) at 115V?",
+      "expectedAnswerContains": ["20.6"],
+      "valueStrings": ["20.6W"],
+      "expectedPages": [12],
+      "verified": true,
+      "note": "p12 'Power consumption for iMac' table: Idle-Display On 20.5W (100V), 20.6W (115V), 20.9W (230V). Values are row-wise in the text but the 100V/115V/230V headers are separated, so a chunk containing 20.6W does not prove the voltage is known; the value hit cannot test that and is therefore generous here. Check the answer by hand for 115V vs 100V/230V confusion."
+    },
+    {
+      "id": "g07-adapter-230v",
+      "type": "trap",
+      "kind": "table",
+      "question": "What is the power adapter efficiency at 230V?",
+      "expectedAnswerContains": ["91.9"],
+      "valueStrings": ["91.9%"],
+      "expectedPages": [12],
+      "verified": true,
+      "note": "p12 table: Power adapter efficiency 91.1% (100V), 91.5% (115V), 91.9% (230V). Same header-separation caveat as g06."
+    },
+    {
+      "id": "g08-packaging-recycled",
+      "type": "fact",
+      "kind": "callout",
+      "question": "How much of the iMac packaging is recycled content?",
+      "expectedAnswerContains": ["76"],
+      "valueStrings": ["76 percent recycled content"],
+      "expectedPages": [6],
+      "verified": true,
+      "note": "p6 paragraph 'Our packaging for iMac contains 76 percent recycled content' and the big-number callout '76%'. Distractors: 100% fiber-based, 100% responsibly sourced virgin wood fiber, more than 15 percent device recycled content."
+    },
+    {
+      "id": "g09-copper-footnote",
+      "type": "trap",
+      "kind": "footnote",
+      "question": "Does the 100 percent recycled copper in the thermal module components apply to every iMac model?",
+      "expectedAnswerContains": ["four ports"],
+      "valueStrings": ["thermal module", "four ports"],
+      "expectedPages": [4, 11],
+      "verified": true,
+      "note": "p4 Copper callout cites footnote 14 (p11): 'Recycled copper in the thermal module applies to iMac (four ports) only.' The callout alone reads as unconditional; the caveat is only in the footnote. Value hit needs the footnote text appended to (or retrieved in) the same chunk as 'thermal module' (D-08). Correct answer is 'No, four ports only'; the 'four ports' string check cannot detect a wrong 'yes' that also mentions it, judge failures by hand."
+    },
+    {
+      "id": "g10-346-config-conflict",
+      "type": "trap",
+      "kind": "footnote",
+      "question": "Which iMac configuration (ports and storage) does the 346 kg carbon footprint figure apply to?",
+      "expectedAnswerContains": ["two ports", "256"],
+      "valueStrings": ["346 kg", "two ports", "256GB"],
+      "expectedPages": [10, 2],
+      "verified": true,
+      "note": "DOCUMENT CONTRADICTS ITSELF. p10 table and the p2 paragraph say iMac (two ports) 256GB = 346 kg (four ports 512GB = 391 kg). p2 footnote 10 (printed on p11) says the LCA is 'based on iMac (two ports) with 512GB storage configuration'. Decision: follow the p10 table (256GB). An answer of '512GB' fails; an answer that also flags the footnote conflict is acceptable but is not checked automatically. Value hit uses p10/p2 (the p11 footnote cannot satisfy it). Flag to user."
+    },
+    {
+      "id": "g11-oos-battery-life",
+      "type": "out-of-scope",
+      "kind": "none",
+      "question": "How many hours of battery life does the iMac have?",
+      "expectedAnswerContains": [],
+      "expectedPages": [],
+      "verified": true,
+      "note": "Not in the document. Verified: pdftotext over all 12 pages; 'battery' appears only in 'modeling daily battery drain' (p9, use-phase method) and cobalt in Apple-designed batteries (p4, p11 fn 13). No battery life figure."
+    },
+    {
+      "id": "g12-oos-weight",
+      "type": "out-of-scope",
+      "kind": "none",
+      "question": "How much does the iMac weigh?",
+      "expectedAnswerContains": [],
+      "expectedPages": [],
+      "verified": true,
+      "note": "Not in the document. Verified: no 'weigh', pounds, lb or product-mass figure in pdftotext of all 12 pages; the only 'weight' mentions are 'packaging by weight' (p1/p11 fn 3). Mild risk: the model might answer with a packaging figure; that would be a real refusal failure."
+    }
+  ]
+}
