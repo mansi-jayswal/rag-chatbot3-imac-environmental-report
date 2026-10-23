@@ -126,6 +126,11 @@ db port for host scripts).
 - Chat and vision (Flash model): about 20 requests per day. When exhausted the UI shows a quota message,
   `npm run eval` cannot complete answer checks (`--retrieval-only` still works), and uncached vision pages cannot
   be transcribed. Retries honor the `retryDelay` the server returns.
+- Chat is a fallback list, not one model (`CHAT_MODELS` in `src/lib/rag/config.ts`): gemini-3.5-flash,
+  gemini-3.6-flash, gemini-3.5-flash-lite, gemini-3.1-flash-lite. Each answer uses the first model that sends its
+  first chunk within 15 s; on a 429 (each model has its own free quota), a 5xx, a 404 or no reply in time the next one
+  is tried. Only when all fail does the UI show the quota or busy message. Vision stays on gemini-3.8-flash (the
+  cached transcripts were made with it). Set `EVAL_CHAT_MODEL` to pin eval/CLI runs to one model.
 
 ## Layout
 

@@ -65,3 +65,7 @@
 - Report sections by page with colours for the life-cycle stages and carbon pages (D-26); "Open page" via `/api/pdf`, PDF shipped in the Docker image (D-27).
 - Verified: `tsc --noEmit`, `npm run lint`, `npm run build` clean; dev server on port 3003 (3000/5432 are used by another project on this machine; `.env.local` already sets DB 5434 / app 3003): GET / 200 with the new welcome screen, GET /api/pdf 200 (6.8 MB) and Range 206, `POST /api/ask {}` 400, one real question (footprint split) streamed 5 sources (p10 table, p2 chart, p9, p10) and an answer citing `(page 10)` with 346 kg / 50% / 45% (1 chat call used).
 - NOT verified: anything visual or interactive in a browser (layout, chip click/highlight, theme toggle, phone sheet, mock mode states); Docker image rebuild with the PDF.
+
+## 2026-10-23 (chat model fallback)
+- "Always loading" answers traced to gemini-3.8-flash hanging (3 x 60 s timeouts = 3.1 min), not quota. Added the `CHAT_MODELS` fallback list with a 15 s first-chunk limit per model (D-28); vision pinned to gemini-3.8-flash.
+- Verified: tsc, lint; forced 3.8-flash first -> 503 -> 3.5-flash answered (6 s); `/api/ask` stand question answered in 5.2 s with correct citations. Not verified: the all-models-fail path, and the eval with the new default models (answers may differ from the D-23 run on 3.6-flash).
