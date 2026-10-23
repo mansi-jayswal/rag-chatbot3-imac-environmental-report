@@ -59,3 +59,9 @@
 ## 2026-10-16 (full eval)
 - Budgeted full eval on vision-v1 passed: 8/8 correct, 2/2 refusals, 10 chat calls on gemini-3.6-flash (D-23). Eval hardened (call cap, incremental save, pacing).
 - Not done: g08/g09, plain-text chat baseline, browser check of the 3 exam questions, golden-set review by the user.
+
+## 2026-10-23 (UI matched to task-2, report sections)
+- Replaced the task-1 style UI with task-2's "Atlas" UI (D-25): `src/components/{chat-app,message,retrieval-steps,answer-text,evidence-panel,composer,theme-toggle,cx}`, `src/lib/{sections,mock-ask}.ts`, `src/app/api/pdf/route.ts`; removed `workspace(.css)`, `answer`, `evidence`, `history-rail`, `lib/{history,highlight,use-media-query}`.
+- Report sections by page with colours for the life-cycle stages and carbon pages (D-26); "Open page" via `/api/pdf`, PDF shipped in the Docker image (D-27).
+- Verified: `tsc --noEmit`, `npm run lint`, `npm run build` clean; dev server on port 3003 (3000/5432 are used by another project on this machine; `.env.local` already sets DB 5434 / app 3003): GET / 200 with the new welcome screen, GET /api/pdf 200 (6.8 MB) and Range 206, `POST /api/ask {}` 400, one real question (footprint split) streamed 5 sources (p10 table, p2 chart, p9, p10) and an answer citing `(page 10)` with 346 kg / 50% / 45% (1 chat call used).
+- NOT verified: anything visual or interactive in a browser (layout, chip click/highlight, theme toggle, phone sheet, mock mode states); Docker image rebuild with the PDF.
