@@ -1,8 +1,8 @@
 import { cosineDistance, desc, sql } from "drizzle-orm";
 import { db } from "../db";
 import { chunks } from "../db/schema";
-import { CHAT_MODEL, TOP_K } from "./config";
-import { ai, embedTexts, withRetry, type RetryOptions } from "./embed";
+import { CHAT_FIRST_CHUNK_TIMEOUT_MS, CHAT_MODELS, TOP_K } from "./config";
+import { ai, embedTexts, type RetryOptions } from "./embed";
 
 export type Hit = { id: number; page: number; kind: string; content: string; score: number };
 export type Answer = { answer: string; hits: Hit[] };
@@ -24,16 +24,32 @@ export async function retrieve(question: string, topK = TOP_K, retry?: RetryOpti
     .limit(topK);
 }
 
-// Same model, prompt and temperature for the one-shot and streaming paths.
-function generationRequest(question: string, hits: Hit[]) {
+// EVAL_CHAT_MODEL pins eval/CLI runs to one model (a separate free-tier quota); the app never sets it.
+const chatModels = (): readonly string[] => (process.env.EVAL_CHAT_MODEL ? [process.env.EVAL_CHAT_MODEL] : CHAT_MODELS);
+
+// Same prompt and temperature for every model and for the one-shot and streaming paths.
+function generationRequest(question: string, hits: Hit[], model: string, abortSignal?: AbortSignal) {
   const excerpts = hits.map((h) => `[page ${h.page}]\n${h.content}`).join("\n\n");
   return {
-    // EVAL_CHAT_MODEL lets eval/CLI runs use another model's separate free-tier quota; the app never sets it.
-    model: process.env.EVAL_CHAT_MODEL || CHAT_MODEL,
+    model,
     contents: `Excerpts:\n${excerpts}\n\nQuestion: ${question}`,
-    config: { systemInstruction: SYSTEM_PROMPT, temperature: 0 },
+    config: { systemInstruction: SYSTEM_PROMPT, temperature: 0, abortSignal },
   };
 }
+
+// Worth trying the next model: quota (429, per-model buckets), overload (5xx), unknown or retired model (404), or
+// no first chunk in time. A 400 (bad request) would fail the same way on every model, so it is thrown at once.
+function isFallbackError(err: unknown): boolean {
+  const e = err as { status?: number; name?: string; message?: string };
+  if (e?.status === 429 || e?.status === 404 || (e?.status !== undefined && e.status >= 500)) return true;
+  if (e?.name === "AbortError" || e?.name === "TimeoutError") return true;
+  return /RESOURCE_EXHAUSTED|quota|UNAVAILABLE|high demand|overloaded/i.test(String(e?.message ?? ""));
+}
+
+const failureLabel = (err: unknown): string => {
+  const e = err as { status?: number; name?: string };
+  return e?.name === "AbortError" ? "no reply in time" : String(e?.status ?? e?.name ?? "error");
+};
 
 // Opt-in (EVAL_CHAT_BUDGET=1): every attempt may cost free-tier quota, so retry a 5xx once, never retry a 429.
 // Default behaviour (unset) is unchanged. Counts attempts that reached the model in globalThis.__chatCalls.
@@ -46,7 +62,7 @@ async function budgetedGenerate(question: string, hits: Hit[]) {
     g.__chatCalls = (g.__chatCalls ?? 0) + 1;
     console.warn(`[budget] chat call #${g.__chatCalls}`);
     try {
-      return await ai.models.generateContent(generationRequest(question, hits));
+      return await ai.models.generateContent(generationRequest(question, hits, chatModels()[0]));
     } catch (err) {
       const status = (err as { status?: number }).status;
       if (status !== undefined && status >= 500 && attempt < 2) {
@@ -60,8 +76,9 @@ async function budgetedGenerate(question: string, hits: Hit[]) {
 
 export async function generateAnswer(question: string, hits: Hit[]): Promise<string> {
   if (process.env.EVAL_CHAT_BUDGET === "1") return ((await budgetedGenerate(question, hits)).text ?? "").trim();
-  const res = await withRetry(() => ai.models.generateContent(generationRequest(question, hits)));
-  return (res.text ?? "").trim();
+  let text = "";
+  for await (const piece of streamText(question, hits)) text += piece;
+  return text.trim();
 }
 
 export async function answerQuestion(question: string): Promise<Answer> {
@@ -71,20 +88,53 @@ export async function answerQuestion(question: string): Promise<Answer> {
 
 export type AnswerStream = { hits: Hit[]; text: AsyncGenerator<string, void> };
 
-// Interactive requests: ~3 quick attempts, and give up fast if Google asks for a long wait.
+// Interactive requests: a few quick embedding attempts, and give up fast if Google asks for a long wait.
 const WEB_RETRY: RetryOptions = { maxAttempts: 3, maxServerWaitMs: 15_000 };
 
 // Retrieval runs first so callers can show sources (or fail cleanly) before any generation starts.
-// The model request is only sent once `text` is iterated; withRetry covers opening the stream.
+// The model request is only sent once `text` is iterated.
 export async function streamAnswer(question: string): Promise<AnswerStream> {
   const hits = await retrieve(question, TOP_K, WEB_RETRY);
   return { hits, text: streamText(question, hits) };
 }
 
+// Walks the chat models in order (D-28). Falling back is only safe before the first chunk: after that the reader has
+// part of an answer, so a later failure is thrown instead of starting over with another model. Stopping the
+// generator (the client went away) aborts the upstream request.
 async function* streamText(question: string, hits: Hit[]): AsyncGenerator<string, void> {
-  const stream = await withRetry(() => ai.models.generateContentStream(generationRequest(question, hits)), WEB_RETRY);
-  for await (const chunk of stream) {
-    const text = chunk.text;
-    if (text) yield text;
+  const failures: string[] = [];
+  let allQuota = true;
+  for (const model of chatModels()) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CHAT_FIRST_CHUNK_TIMEOUT_MS);
+    let iterator: AsyncIterator<{ text?: string }>;
+    let first: IteratorResult<{ text?: string }>;
+    try {
+      const stream = await ai.models.generateContentStream(generationRequest(question, hits, model, controller.signal));
+      iterator = stream[Symbol.asyncIterator]();
+      first = await iterator.next();
+    } catch (err) {
+      controller.abort();
+      if (!isFallbackError(err)) throw err;
+      if ((err as { status?: number }).status !== 429) allQuota = false;
+      failures.push(`${model} (${failureLabel(err)})`);
+      console.warn(`[chat] ${model} failed (${failureLabel(err)}), trying the next model`);
+      continue;
+    } finally {
+      clearTimeout(timer);
+    }
+    try {
+      if (failures.length) console.warn(`[chat] answered by ${model} after: ${failures.join(", ")}`);
+      if (first.value?.text) yield first.value.text;
+      for (let r = first; !r.done; ) {
+        r = await iterator.next();
+        if (!r.done && r.value.text) yield r.value.text;
+      }
+    } finally {
+      controller.abort();
+    }
+    return;
   }
+  // Every model failed: report it as quota only when every one of them said so (the route maps 429 to "quota").
+  throw Object.assign(new Error(`All chat models failed: ${failures.join(", ")}`), { status: allQuota ? 429 : 503 });
 }

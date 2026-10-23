@@ -1,4 +1,5 @@
 import type { AskEvent } from "./ask-protocol";
+import { mockAskStream } from "./mock-ask";
 
 const NETWORK_ERROR: AskEvent = {
   type: "error",
@@ -7,12 +8,14 @@ const NETWORK_ERROR: AskEvent = {
 };
 
 // Posts the question and reports each NDJSON event (see ask-protocol.ts). Resolves when the stream ends;
-// an aborted request resolves silently without emitting anything.
+// an aborted request resolves silently without emitting anything. `mock` swaps the API for a fake stream (`/?mock=1`).
 export async function streamAsk(
   question: string,
   signal: AbortSignal,
   onEvent: (event: AskEvent) => void,
+  mock = false,
 ): Promise<void> {
+  if (mock) return mockAskStream(question, signal, onEvent);
   let res: Response;
   try {
     res = await fetch("/api/ask", {

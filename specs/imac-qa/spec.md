@@ -31,7 +31,13 @@ Plus an out-of-scope question that must answer "Not in the document."
 9. Answer: strict grounding prompt (context only, cite PDF pages, exact "Not in the document." refusal,
    temperature ~0), streamed.
 
-## UI requirements (match task-1, D-15)
+## UI requirements (now match task-2, D-25; the task-1 version below is superseded)
+Chat thread + evidence column like `../task-2` ("Atlas" look, theme toggle, retrieval checklist, mock mode), with the
+iMac report's own sections (by page, `src/lib/sections.ts`) in place of task-2's regions: section-coloured citation
+chips, evidence cards grouped by section, one welcome tile per section, "Open page" via `GET /api/pdf`. Current chat
+only (no saved history). NDJSON protocol and server prompt unchanged.
+
+## UI requirements (match task-1, D-15; superseded by D-25)
 Same layout and components as `../task-1`: workspace with composer, streamed answer, collapsible evidence
 panel, history rail (browser-only localStorage), refusal state, quota/error states, NDJSON `POST /api/ask`
 (`sources`, `text`, `done`/`error`). Differences from task-1:

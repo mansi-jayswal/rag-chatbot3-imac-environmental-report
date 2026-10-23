@@ -76,7 +76,8 @@ export async function transcribePage(
             ],
           },
         ],
-        config: { temperature: 0 },
+        // A whole-PDF vision call takes 90-130 s, past the client's 60 s default.
+        config: { temperature: 0, httpOptions: { timeout: 240_000 } },
       }),
     { maxAttempts: opts.maxAttempts ?? 3 },
   );
