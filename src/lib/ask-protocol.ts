@@ -22,3 +22,5 @@ export type AskEvent =
   | { type: "text"; text: string }
   | { type: "done" }
   | { type: "error"; code: AskErrorCode; message: string };
+
+export const PDF_URL = "/api/pdf"; // GET serves the report; append "#page=N" to open a page

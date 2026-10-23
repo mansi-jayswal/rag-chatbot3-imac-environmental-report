@@ -7,3 +7,5 @@ Dockerfile
 docker-compose.yml
 README.md
 data
+# The report itself is served by GET /api/pdf ("Open page"); nothing else under data/ goes in the image
+!data/iMac_PER_Oct2024.pdf

@@ -7,9 +7,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist), system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-heading: var(--font-source-serif), ui-serif, Georgia, serif;
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), Georgia, ui-serif, serif;
+  --font-mono: var(--font-geist-mono);
+  --color-shelf: var(--shelf);
+  --font-heading: var(--font-sans);
+  --color-brand-soft: var(--brand-soft);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,53 +51,124 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* "Atlas" palette (same look as task-2): ink navy on cool white, navy-based dark theme. Light and dark come from one set of tokens via
+   light-dark(): it follows the OS setting, and a .dark / .light class on <html> (set by the theme toggle) forces one.
+   (Tailwind's class-based `dark:` variant is therefore not used in the chat UI.) */
 :root {
-  /* Quiet research tool, dark only (D-63..). Standard shadcn tokens carry the whole palette:
-     primary = the single amber accent, sidebar = the darker side panels, chart-2 = the "ready" green. */
-  color-scheme: dark;
-  --background: #0f1012;
-  --foreground: #ebe9e4;
-  --card: #131418;
-  --card-foreground: #c9ccd0;
-  --popover: #1a1c21;
-  --popover-foreground: #ebe9e4;
-  --primary: #e6ac50;
-  --primary-foreground: #241704;
-  --secondary: #1a1c21;
-  --secondary-foreground: #ebe9e4;
-  --muted: #16171b;
-  --muted-foreground: #a3a29b;
-  --accent: #1a1c21;
-  --accent-foreground: #ebe9e4;
-  --destructive: #e59292;
-  --border: #202228;
-  --input: #2d3038;
-  --ring: #e6ac50;
-  --chart-1: #e6ac50;
-  --chart-2: #7fc29b;
-  --chart-3: #8fa7c4;
-  --chart-4: #c49a8f;
-  --chart-5: #74736c;
-  --radius: 0.3125rem;
-  --sidebar: #101114;
-  --sidebar-foreground: #ebe9e4;
-  --sidebar-primary: #e6ac50;
-  --sidebar-primary-foreground: #241704;
-  --sidebar-accent: #1a1c21;
-  --sidebar-accent-foreground: #ebe9e4;
-  --sidebar-border: #202228;
-  --sidebar-ring: #e6ac50;
+  color-scheme: light dark;
+  --background: light-dark(#f6f8fa, #0e1a2a);
+  --foreground: light-dark(#12263f, #e5ecf3);
+  --card: light-dark(#ffffff, #15253a);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(#12263f, #cfe0f2);
+  --primary-foreground: light-dark(#f6f8fa, #0e1a2a);
+  --secondary: light-dark(#ebf0f5, #1b2d44);
+  --secondary-foreground: var(--foreground);
+  --muted: light-dark(#ebf0f5, #1b2d44);
+  --muted-foreground: light-dark(#56677c, #94a6bb);
+  --accent: light-dark(#e2eaf3, #1f3550);
+  --accent-foreground: var(--foreground);
+  --brand-soft: light-dark(#e2eaf3, #1f3550);
+  --shelf: light-dark(#edf1f5, #0a1522); /* the evidence column: one step back from the chat */
+  /* One colour per life-cycle topic (sections.ts): a mid-dark shade for light backgrounds and a lighter one for dark ones */
+  --carbon-on-dark: #f29a85; /* coral: carbon emissions */
+  --source-on-dark: #a3cc72; /* moss: materials */
+  --make-on-dark: #6cb8ec; /* sky: manufacturing */
+  --ship-on-dark: #e7b453; /* ochre: fiber packaging */
+  --use-on-dark: #5ccbc3; /* teal: energy use */
+  --recover-on-dark: #d49ad0; /* plum: recycling */
+  --section-carbon: light-dark(#b84a34, var(--carbon-on-dark));
+  --section-source: light-dark(#4f7a28, var(--source-on-dark));
+  --section-make: light-dark(#1f7ab8, var(--make-on-dark));
+  --section-ship: light-dark(#9a600a, var(--ship-on-dark));
+  --section-use: light-dark(#0f7f7a, var(--use-on-dark));
+  --section-recover: light-dark(#8a3f86, var(--recover-on-dark));
+  --destructive: light-dark(oklch(0.52 0.2 27), oklch(0.74 0.16 22));
+  --border: light-dark(#dae2ea, #24374f);
+  --input: light-dark(#c9d4df, #2e4460);
+  --ring: light-dark(#2f6fb0, #7fb0e0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.75rem;
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
+:root.dark { color-scheme: dark; }
+:root.light { color-scheme: light; }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  html,
-  body {
-    height: 100%;
+  html {
+    @apply font-sans;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Tone utilities: a component sets --tone (lib/sections.ts toneStyle) to a section colour or ink, these read it */
+@utility bg-tone-soft {
+  background-color: color-mix(in oklab, var(--tone) 13%, transparent);
+}
+@utility bg-tone-strong {
+  background-color: color-mix(in oklab, var(--tone) 26%, transparent);
+}
+@utility border-tone-faint {
+  border-color: color-mix(in oklab, var(--tone) 35%, transparent);
+}
+
+/* The logo is navy in both themes, so its bars always use the shades made for dark backgrounds */
+.atlas-mark {
+  --section-carbon: var(--carbon-on-dark);
+  --section-source: var(--source-on-dark);
+  --section-make: var(--make-on-dark);
+  --section-ship: var(--ship-on-dark);
+  --section-use: var(--use-on-dark);
+  --section-recover: var(--recover-on-dark);
+}
+
+/* A clicked citation's evidence card pulses twice in its section colour */
+@keyframes tone-pulse {
+  from { box-shadow: 0 0 0 0 color-mix(in oklab, var(--tone) 55%, transparent); }
+  to { box-shadow: 0 0 0 10px transparent; }
+}
+@utility animate-tone-pulse {
+  animation: tone-pulse 0.9s ease-out 2;
+}
+
+/* A retrieval checklist tick pops in once when its step finishes */
+@keyframes step-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@utility animate-step-pop {
+  animation: step-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Theme toggle cross-fade (View Transitions API; skipped by the toggle when reduced motion is on) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.25s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

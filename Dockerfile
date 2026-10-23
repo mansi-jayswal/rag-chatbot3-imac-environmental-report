@@ -17,6 +17,8 @@ ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
+# Read at runtime by GET /api/pdf (not traced into the standalone output)
+COPY --from=build --chown=node:node /app/data/iMac_PER_Oct2024.pdf ./data/iMac_PER_Oct2024.pdf
 USER node
 EXPOSE 3000
 CMD ["node", "server.js"]
