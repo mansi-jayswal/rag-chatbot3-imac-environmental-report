@@ -5,7 +5,17 @@ export const CHUNK_SIZE = 900;
 export const CHUNK_OVERLAP = 135; // ~15%
 
 export const EMBEDDING_MODEL = "gemini-embedding-001";
-export const CHAT_MODEL = "gemini-3.8-flash";
+// Chat models in preference order (D-28): an answer uses the first one that starts streaming. A single model turned
+// Gemini overload into a dead app: gemini-3.8-flash hung past every timeout (measured 2026-10-23, same as rag-chatbot
+// saw), while these answered in ~2-11 s. Each model has its own free-tier quota, so a 429 on one also falls through
+// to the next. Free-tier models only; reorder to trade speed for capability, no other file needs to change.
+// Measured first chunk on this key (2026-10-23): 3.5-flash 2.1 s, 3.6-flash 4.0 s, 3.5-flash-lite 1.7 s,
+// 3.1-flash-lite 10.9 s, 3.8-flash no response in 20 s.
+export const CHAT_MODELS = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"] as const;
+export const CHAT_MODEL = CHAT_MODELS[0];
+// How long one model may take to send its first chunk before the next model is tried. Only the wait for the first
+// chunk is capped: the SDK's httpOptions.timeout would stay armed while the body streams and cut long answers off.
+export const CHAT_FIRST_CHUNK_TIMEOUT_MS = 15_000;
 export const EMBED_BATCH_SIZE = 20;
 
 export const TOP_K = 5;
@@ -17,8 +27,9 @@ export const CHUNK_VERSION = "plain-text-v1";
 
 // ---- Pipeline 'vision-v1' (Phase 4, D-05/D-06/D-12) ----
 export const VISION_PIPELINE = "vision-v1";
-// D-13: one Flash model for page vision and chat answers.
-export const VISION_MODEL = CHAT_MODEL;
+// D-13 used one Flash model for vision and chat; chat now has a fallback list (D-28) and vision stays on the model
+// that made the cached transcripts (the cache key and the ingest config include it, so changing it re-transcribes).
+export const VISION_MODEL = "gemini-3.8-flash";
 // Bump when the vision prompt changes: the on-disk cache key includes it, so old transcripts are not reused.
 export const VISION_PROMPT_VERSION = "v1";
 export const VISION_CACHE_DIR = "data/extracted/vision-cache";
